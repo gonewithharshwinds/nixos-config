@@ -38,7 +38,6 @@
     pkgs.fastfetch
     pkgs.starship
     pkgs.btop
-    pkgs.jq
     pkgs.helix
     pkgs.eza
     pkgs.adw-gtk3
@@ -54,7 +53,6 @@
     # AGS UTILITIES
     pkgs.sassc  # <--- CRITICAL ADDITION
     pkgs.dart-sass
-    pkgs.fd
     pkgs.fzf
     
 
