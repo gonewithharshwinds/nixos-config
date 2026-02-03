@@ -2,7 +2,15 @@
 
 {
   # 1. IMPORT AGS MODULE (CRITICAL ADDITION)
-  imports = [ inputs.ags.homeManagerModules.default ];
+  # imports = [ inputs.ags.homeManagerModules.default ];
+
+  imports = [ 
+    ./ags/default.nix 
+    ./softwares/kitty.nix
+    #./softwares/vscode.nix
+    ./softwares/yazi.nix
+    ./softwares/helix.nix
+  ];
 
   home.username = "h4rsh";
   home.homeDirectory = "/home/h4rsh";
@@ -64,36 +72,26 @@
     pkgs.libva
     pkgs.ffmpeg_7-full
 
+
+    # Affinity V3
     inputs.affinity-nix.packages.${pkgs.system}.v3
 
-    # Thunar with plugins (Archive support, Volume management)
+    # Thunar with plugins
     (pkgs.thunar.override {
       thunarPlugins = [
         pkgs.thunar-archive-plugin
         pkgs.thunar-volman
       ];
     })
+    pkgs.tumbler 
+    pkgs.gvfs
 
-    pkgs.tumbler   # Essential for Thunar image thumbnails
-    pkgs.gvfs           # Required for Trash, USB mounting, and SFTP in Thunar
-    
-    # pkgs.kdePackages.dolphin       # FIXED: Moved to kdePackages in 25.11
-    # pkgs.kdePackages.kio-extras    # For network shares
-    # pkgs.kdePackages.ffmpegthumbs  # For video thumbnails
-    
-    # pkgs.kdePackages.kdegraphics-thumbnailers # For image thumbnails
     (pkgs.obsidian.override {
-	    commandLineArgs = [
-	      "--enable-features=UseOzonePlatform"
-	      "--ozone-platform=wayland"
-	    ];
+      commandLineArgs = [
+        "--enable-features=UseOzonePlatform"
+        "--ozone-platform=wayland"
+      ];
     })
-
-    # 2. AGS UTILITIES
-    pkgs.dart-sass
-    pkgs.fd
-    pkgs.fzf
-    pkgs.material-symbols
   ];
 
   home.sessionVariables = {
@@ -103,15 +101,15 @@
   };
 
   # 3. AGS CONFIGURATION (Replaces Rofi eventually)
-  programs.ags = {
-    enable = true;
-    configDir = ./ags; # This assumes you create the folder ~/.config/ags or next to this file
-    extraPackages = with pkgs; [
-      gtksourceview
-      webkitgtk_4_1 # FIXED: Updated from 'webkitgtk' to explicit ABI version
-      accountsservice
-    ];
-  };
+  #programs.ags = {
+  #  enable = true;
+  #  configDir = ./ags; # This assumes you create the folder ~/.config/ags or next to this file
+  #  extraPackages = with pkgs; [
+  #    gtksourceview
+  #    webkitgtk_4_1 # FIXED: Updated from 'webkitgtk' to explicit ABI version
+  #    accountsservice
+  #  ];
+  #};
 
 ############################################
 
@@ -210,24 +208,22 @@ xdg.configFile."rofi/bento.rasi".text = ''
   # Allow Caelestia to manage certain XDG settings if needed
   xdg.enable = true;
 
-  wayland.windowManager.hyprland = {
+    wayland.windowManager.hyprland = {
     enable = true;
-    
     settings = {
-
         monitor = ",preferred, auto, auto";
-	
-	"$mainMod" = "SUPER";
+  
+        "$mainMod" = "SUPER";
         "$terminal" = "kitty";
         "$fileManager" = "thunar";
-	"$termFileManager" = "$terminal -e yazi";
+        "$termFileManager" = "$terminal -e yazi";
         
-	exec-once = [
+        exec-once = [
           "caelestia shell -d"
           "swww-daemon"
           "wl-paste --type text --watch cliphist store"
           "wl-paste --type image --watch cliphist store"
-          "ags" # Ensure AGS starts
+          "ags" # Starts the daemon (config loaded from ags/default.nix)
         ];
   
         general  = {
@@ -244,18 +240,13 @@ xdg.configFile."rofi/bento.rasi".text = ''
           "$mainMod, Q, killactive"
           "$mainMod, M, exit"
 
-          # Full screen → clipboard
-          "ALT, S, exec, grim - | wl-copy"
+          # Screenshots
+          "ALT, S, exec, grim - | wl-copy" # whole area
+          "ALT SHIFT, S, exec, grim -g \"$(slurp)\" - | wl-copy" # select area
+          "ALT CTRL, S, exec, grim -g \"$(slurp)\" ~/Pictures/screenshot-$(date +%s).png" # auto save
 
-          # Area select → clipboard
-          "ALT SHIFT, S, exec, grim -g \"$(slurp)\" - | wl-copy"
-
-          # Area select → file
-          "ALT CTRL, S, exec, grim -g \"$(slurp)\" ~/Pictures/screenshot-$(date +%s).png"
-
-
-          # --- UPDATED LAUNCHER BINDING ---
-          # Replaced 'rofi' with 'ags' bento launcher
+          # --- AGS LAUNCHER BINDING ---
+          # This triggers the 'bento_launcher' window defined in your JS config
           "$mainMod, G, exec, ags -t bento_launcher"
 
           "SUPER, SUPER_L, global, caelestia:launcher"
@@ -273,6 +264,7 @@ xdg.configFile."rofi/bento.rasi".text = ''
           "size 900 600, class:^(thunar)$"
           
           # --- BENTO LAUNCHER RULES ---
+          # These rules apply to the AGS window named 'bento_launcher'
           "float, class:^(bento_launcher)$"
           "center, class:^(bento_launcher)$"
           "animation popin 80%, class:^(bento_launcher)$"
@@ -294,133 +286,40 @@ xdg.configFile."rofi/bento.rasi".text = ''
     };
   };
 
-####################################################################
-# KITTY PROGRAM ##################################
-####################################################################
-  programs.kitty = {
-    enable = true;
-    themeFile = "flexoki_dark";
-    font = {
-	name = "JetBrainsMono Nerd Font";
-	size = 11;
-    };
-    settings = {
-      # UI/UX
-	scrollback_lines = 10000;
-	enable_audio_bell = false;
-	update_check_interval = 0; # Disable update checks on NixOS
-      
-        # Window Layout
-        window_padding_width = 15;
-        confirm_os_window_close = 0;
-      
-        # Transparency (Beautification)
-        background_opacity = "0.85";
-        background_blur = 1; # Only works if your compositor (Hyprland) supports it
-      
-        # Performance (Safe for Unstable)
-        repaint_delay = 10;
-        input_delay = 3;
-        sync_to_monitor = "yes";
-    };
-  };
-
-####################################################################
-# HELIX PROGRAM ###############################
-####################################################################
-  programs.helix = {
-enable = true;
-# Global settings
-settings = {
-theme = "autumn_night_transparent";
-editor = {
-line-number = "relative";
-cursorline = true;
-color-modes = true;
-cursor-shape = {
-normal = "block";
-insert = "bar";
-select = "underline";
-};
-indent-guides.render = true;
-auto-format = true;
-};
-};
-
-# Language specific config based on docs.helix-editor.com
-languages = {
-  language = [
-    {
-      name = "nix";
-      auto-format = true;
-      # QUICK FIX: Use pkgs.lib.getExe to resolve 'undefined variable lib'
-      formatter = { command = "${pkgs.lib.getExe pkgs.nixfmt-rfc-style}"; };
-    }
-    {
-      name = "markdown";
-      soft-wrap.enable = true;
-      text-width = 80;
-    }
-  ];
-};
-
-themes = {
-  autumn_night_transparent = {
-    "inherits" = "autumn_night";
-    "ui.background" = { };
-  };
-};
-
-
-};
-####################################################################
-# YAZI PROGRAM ##################################
-####################################################################
-  programs.yazi = {
-	enable = true;
-	enableBashIntegration = true;
-  };
-
-####################################################################
-# VSCODE ################################
-####################################################################
 programs.vscode = {
-enable = true;
-package = pkgs.vscode.override {
-commandLineArgs = [
-"--enable-features=UseOzonePlatform"
-"--ozone-platform=wayland"
-];
-};
-extensions = with pkgs.vscode-extensions; [
-# Modern Tonal Themes & Icons
-  catppuccin.catppuccin-vsc
-  catppuccin.catppuccin-vsc-icons
-  # Languages
-  jnoortheen.nix-ide
-  mkhl.direnv
-];
-userSettings = {
-  "window.titleBarStyle" = "custom";
-  "editor.fontFamily" = "'JetBrainsMono Nerd Font', 'monospace', monospace";
-  "editor.fontSize" = 13;
-  "editor.fontLigatures" = true;
-  "workbench.colorTheme" = "Catppuccin Mocha"; # Switched to Catppuccin as it's standard in nixpkgs
-  "workbench.iconTheme" = "catppuccin-mocha";
-  "editor.minimap.enabled" = false;
-  "editor.scrollbar.vertical" = "hidden";
-  "editor.scrollbar.horizontal" = "hidden";
-  "window.menuBarVisibility" = "toggle";
-  "workbench.activityBar.location" = "top";
-  "editor.cursorSmoothCaretAnimation" = "on";
-  "editor.smoothScrolling" = true;
-  "terminal.integrated.fontFamily" = "JetBrainsMono Nerd Font";
-  "nix.enableLanguageServer" = true;
-  "nix.serverPath" = "nil";
-};
+    enable = true;
+    package = pkgs.vscode.override {
+      commandLineArgs = [
+        "--enable-features=UseOzonePlatform"
+        "--ozone-platform=wayland"
+      ];
+    };
+    extensions = with pkgs.vscode-extensions; [
+      catppuccin.catppuccin-vsc
+      catppuccin.catppuccin-vsc-icons
+      jnoortheen.nix-ide
+      mkhl.direnv
+    ];
+    userSettings = {
+      "window.titleBarStyle" = "custom";
+      "editor.fontFamily" = "'JetBrainsMono Nerd Font', 'monospace', monospace";
+      "editor.fontSize" = 13;
+      "editor.fontLigatures" = true;
+      "workbench.colorTheme" = "Catppuccin Mocha"; # Switched to Catppuccin as it's standard in nixpkgs
+      "workbench.iconTheme" = "catppuccin-mocha";
+      "editor.minimap.enabled" = false;
+      "editor.scrollbar.vertical" = "hidden";
+      "editor.scrollbar.horizontal" = "hidden";
+      "window.menuBarVisibility" = "toggle";
+      "workbench.activityBar.location" = "top";
+      "editor.cursorSmoothCaretAnimation" = "on";
+      "editor.smoothScrolling" = true;
+      "terminal.integrated.fontFamily" = "JetBrainsMono Nerd Font";
+      "nix.enableLanguageServer" = true;
+      "nix.serverPath" = "nil";
+    };
+  };
 
-
-};
 
 programs.direnv = {
 enable = true;
