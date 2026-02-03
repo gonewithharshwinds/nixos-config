@@ -12,6 +12,10 @@
     antigravity-nix.url = "github:jacopone/antigravity-nix";
     antigravity-nix.inputs.nixpkgs.follows = "nixpkgs";
 
+    affinity-nix = {
+      url = "github:mrshmllow/affinity-nix";
+    };
+
     # Home Manager
     home-manager = {
       url = "github:nix-community/home-manager";

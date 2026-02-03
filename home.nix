@@ -64,6 +64,8 @@
     pkgs.libva
     pkgs.ffmpeg_7-full
 
+    inputs.affinity-nix.packages.${pkgs.system}.v3
+
     # Thunar with plugins (Archive support, Volume management)
     (pkgs.thunar.override {
       thunarPlugins = [
