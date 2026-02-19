@@ -86,6 +86,8 @@
     pkgs.tumbler 
     pkgs.gvfs
 
+    pkgs.capacities
+
     (pkgs.obsidian.override {
       commandLineArgs = [
         "--enable-features=UseOzonePlatform"

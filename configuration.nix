@@ -12,6 +12,7 @@ in
   imports = [
     ./hardware-configuration.nix
     ./dev-toolchain.nix
+    ./softwares/adb.nix
   ];
 
   # --- THE "INPUTS" FORCE-INJECTION ---
@@ -163,7 +164,7 @@ in
   users.users.h4rsh = {
     isNormalUser = true;
     description = "h4rsh";
-    extraGroups = [ "networkmanager" "wheel" "video" "render" ];
+    extraGroups = [ "networkmanager" "wheel" "video" "render" "adbusers"];
     packages = with pkgs; [
     #  thunderbird
   	kitty # terminal for hyprland
@@ -235,9 +236,13 @@ in
   	vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
   #  wget
   	unzip
+    zip
+    file-roller
 	  vivaldi
     nixd
     nixfmt-rfc-style
+    peazip
+    capacities
   ];
   
   # Some programs need SUID wrappers, can be configured further or are
