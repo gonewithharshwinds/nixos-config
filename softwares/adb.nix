@@ -2,7 +2,7 @@
 
 {
   # SYSTEM LEVEL - This MUST stay in system config, not Home Manager
-  programs.adb.enable = true;
+  # programs.adb.enable = true;
 
   services.udev.extraRules = ''
     # Samsung Vendor ID (S22)

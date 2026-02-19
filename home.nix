@@ -102,6 +102,15 @@
     CLUTTER_BACKEND = "wayland";
   };
 
+  xdg.desktopEntries.capacities = {
+    name = "Capacities";
+    exec = "capacities --no-sandbox %U";
+    icon = "capacities";
+    terminal = false;
+    type = "Application";
+    categories = [ "Office" ];
+  };
+
   # 3. AGS CONFIGURATION (Replaces Rofi eventually)
   #programs.ags = {
   #  enable = true;
