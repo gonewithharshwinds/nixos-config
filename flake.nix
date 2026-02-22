@@ -32,6 +32,18 @@
       url = "github:caelestia-dots/cli";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # (NEW) Spicetify for that aesthetic Spotify client. Because standard Spotify is an eyesore.
+    spicetify-nix = {
+      url = "github:Gerg-L/spicetify-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # (NEW) Nix Index Database. Hooks into command-not-found so you never have to guess what package contains a binary ever again.
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = { self, nixpkgs, home-manager, ... }@inputs: {
@@ -44,6 +56,9 @@
         ./configuration.nix
 
         home-manager.nixosModules.home-manager
+        
+        # (NEW) Injecting the nix-index module directly into the system so it's ready to go
+        inputs.nix-index-database.nixosModules.nix-index
       ];
     };
   };

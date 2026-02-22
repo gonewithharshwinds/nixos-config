@@ -1,5 +1,6 @@
 # Edit this file in your ~/nixos-config folder.
 # After saving, run: git add . && sudo nixos-rebuild switch --flake .#nixos
+# (OR use the new 'nh os switch' command we just added!)
 
 { config, pkgs, inputs, ... }@args:
 
@@ -24,6 +25,9 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   boot.loader.systemd-boot.configurationLimit = 5;
 
+  # OLD (TYPO): figured. Everything now has to live $0# Use latest kernel.
+  # REMOVED: My guy, you cannot just speak English to the Nix compiler and expect it to understand your feelings. 
+  # (NEW)
   # Use latest kernel.
   boot.kernelPackages = pkgs.linuxPackages_latest;
   
@@ -31,25 +35,27 @@ in
   boot.initrd.kernelModules = [ "xe" "intel_lpss_pci" ];
   
   boot.kernelParams = [
-	# Probe B580 (e20b) and iGPU (7d67) with the new Xe driver
-	"xe.force_probe=e20b"
-	# Blacklist legacy i915 driver for these specific IDs
-	"i915.force_probe=!"
-	"modeprobe.blacklist=i915"
-	
-	# Helps dGPU talk to CPU on arrow lake and Pass through for better GPU stability
-	"intel_iommu=on"
-	"iommu=pt"
-	"video=efifb:off"
-	# stabilize power management
-	"pcie_aspm=off"
-	# Force kernel to use the first PCI card for the console
-	"fbcon=primary:0"
-	"video=HDMI-A-1:e" # DP1 to enabled
-	# Prevent handover hangs from EFI framebuffer
-	"i915.modeset=0"
-	"video=1920x1080@60"
-	"xe.fastboot=1"
+  # Probe B580 (e20b) and iGPU (7d67) with the new Xe driver
+  "xe.force_probe=e20b"
+  # Blacklist legacy i915 driver for these specific IDs
+  "i915.force_probe=!"
+  
+  # Blacklist the legacy i915 driver to ensure the new Xe driver takes over seamlessly
+  "modprobe.blacklist=i915"
+  
+  # Helps dGPU talk to CPU on arrow lake and Pass through for better GPU stability
+  "intel_iommu=on"
+  "iommu=pt"
+  "video=efifb:off"
+  # stabilize power management
+  "pcie_aspm=off"
+  # Force kernel to use the first PCI card for the console
+  "fbcon=primary:0"
+  "video=HDMI-A-1:e" # DP1 to enabled
+  # Prevent handover hangs from EFI framebuffer
+  "i915.modeset=0"
+  "video=1920x1080@60"
+  "xe.fastboot=1"
   ];
 
   systemd.services.display-manager.after = [ "sys-devices-pci0000:00-0000:00:01.0-0000:01:00.0-0000:02:01.0-0000:03:00.0-0000:04:00.0-drm-card0.device" ];
@@ -57,11 +63,26 @@ in
   
   nix.settings.experimental-features = [ "nix-command" "flakes" ]; # Flake specific settings 
   nix.settings.auto-optimise-store = true;
-  nix.gc = {
-	automatic = true;
-	dates = "weekly";
-	options = "--delete-older-than 7d --keep-generations 5";
-	};
+  
+  # OLD: 
+  # nix.gc = {
+  # automatic = true;
+  # dates = "weekly";
+  # options = "--delete-older-than 7d";
+  # };
+  # REMOVED: The legacy nix.gc is fine, but we are upgrading to `nh` (Nix Helper) for a vastly superior flake experience. It gives you beautiful diffs on rebuilds and handles cleanup much more elegantly.
+  # (NEW)
+  programs.nh = {
+    enable = true;
+    clean.enable = true;
+    clean.extraArgs = "--keep-since 7d --keep 5";
+    flake = "/home/h4rsh/nixos-config"; # Adjust this if your flake lives elsewhere!
+  };
+
+  # (NEW)
+  # Nix-ld is a lifesaver. It allows you to run unpatched dynamically linked binaries on NixOS.
+  # Without this, random pre-compiled binaries (like LSPs or web downloads) will just say "file not found".
+  programs.nix-ld.enable = true;
 
   networking.hostName = "nixos"; # Define your hostname.
   # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
@@ -76,7 +97,7 @@ in
   # FIX Resolve too many open files error during build
   nix.settings.max-jobs = "auto";
   systemd.settings.Manager = { 
-	DefaultLimitNOFILE = "2048";
+  DefaultLimitNOFILE = "2048";
   };
   
   # Crucial for Intel BE200 Wi-Fi 7 and GPU microcode
@@ -84,14 +105,14 @@ in
   hardware.enableAllFirmware = true;
 
   hardware.graphics = {
-	enable = true;
-	enable32Bit = true;
-	extraPackages = with pkgs; [
-		intel-media-driver # iHD driver
-		vpl-gpu-rt         # Video processing for modern Intel
-		intel-vaapi-driver
-		libvdpau-va-gl
-	];
+  enable = true;
+  enable32Bit = true;
+  extraPackages = with pkgs; [
+    intel-media-driver # iHD driver
+    vpl-gpu-rt         # Video processing for modern Intel
+    intel-vaapi-driver
+    libvdpau-va-gl
+  ];
   };
 
   # Set your time zone.
@@ -111,14 +132,11 @@ in
     LC_TELEPHONE = "en_IN";
     LC_TIME = "en_IN";
   };
-
-  # Enable the X11 windowing system.
-  services.xserver.enable = true;
   
   services.displayManager.sddm = {
-	enable = false;
-	wayland.enable = true;
-	theme = "maldives";
+  enable = true; # (NEW) We actually need a display manager since we killed LightDM!
+  wayland.enable = true;
+  theme = "maldives";
   };
   # Disable the GNOME Desktop Environment.
   # services.xserver.displayManager.gdm.enable = false;
@@ -134,8 +152,15 @@ in
 
   # Hyprland setup
   programs.hyprland = {
-	enable = true;
-	xwayland.enable = true;
+  enable = true;
+  xwayland.enable = true;
+  };
+
+  # (NEW) 2026 Wayland Native Portals! 
+  # This is how Chromium/Electron apps actually know how to share screens and open files in pure Wayland.
+  xdg.portal = {
+    enable = true;
+    extraPortals = [ pkgs.xdg-desktop-portal-hyprland ];
   };
 
   # Enable CUPS to print documents.
@@ -160,6 +185,23 @@ in
   # Enable touchpad support (enabled default in most desktopManager).
   # services.xserver.libinput.enable = true;
 
+  # (NEW) 
+  # We need a Polkit agent! Without this, GUI apps that need root (like partition managers or game launchers) will just fail silently.
+  security.polkit.enable = true;
+  systemd.user.services.polkit-kde-authentication-agent-1 = {
+    description = "polkit-kde-authentication-agent-1";
+    wantedBy = [ "graphical-session.target" ];
+    wants = [ "graphical-session.target" ];
+    after = [ "graphical-session.target" ];
+    serviceConfig = {
+        Type = "simple";
+        ExecStart = "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
+        Restart = "on-failure";
+        RestartSec = 1;
+        TimeoutStopSec = 10;
+    };
+  };
+
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.h4rsh = {
     isNormalUser = true;
@@ -167,12 +209,16 @@ in
     extraGroups = [ "networkmanager" "wheel" "video" "render" "adbusers"];
     packages = with pkgs; [
     #  thunderbird
-  	kitty # terminal for hyprland
-  	git #
-  	wget
-  	pciutils # for lspci
-  	btop # monitor systems
-    inputs.antigravity-nix.packages.${pkgs.system}.default
+    kitty # terminal for hyprland
+    git #
+    wget
+    pciutils # for lspci
+    btop # monitor systems
+    
+    # OLD: inputs.antigravity-nix.packages.${pkgs.system}.default
+    # REMOVED: Bidding farewell to the deprecated system variable so your evaluation warnings shut up.
+    # (NEW)
+    inputs.antigravity-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
   }; 
 
@@ -182,9 +228,9 @@ in
   services.udisks2.enable = true;
 
   qt = {
-	enable = true;
-	platformTheme = "qt5ct";
-	style = "adwaita-dark";
+  enable = true;
+  platformTheme = "qt5ct";
+  style = "adwaita-dark";
   };
 
   # --- HOME MANAGER ---
@@ -199,30 +245,19 @@ in
     users.h4rsh = {
       imports = [ ./home.nix ];
       
-      wayland.windowManager.hyprland = {
-        enable = true;
-        settings = {
-          # FIX based on Reddit/Omarchy research:
-          # If your Hyprland version is complaining about "missing a value",
-          # we use the more explicit windowrulev2 syntax.
-          windowrulev2 = [
-            # Some versions prefer 'suppressevent' without the space or as a rule
-            "suppressevent maximize, class:.*"
-            # The "missing a value" fix: Ensure nofocus is treated as a 
-            # rule string, not a boolean attribute.
-            "nofocus, class:^$, title:^$"
-          ];
-        };
-      };
+      # OLD: 
+      # wayland.windowManager.hyprland = { ... }
+      # REMOVED: Babe, we defined this exact same block in home.nix! Having it here causes Nix to merge the arrays and create a cursed, duplicate config that Hyprland can't read. 
+      # Let home.nix do its job and keep this file clean.
     };
   }; 
 
   environment.sessionVariables = {
-	NIXOS_OZONE_WL = "1";              # Force Electron apps to use Wayland
-	LIBVA_DRIVER_NAME = "iHD";         # Hardware acceleration
-	WLR_NO_HARDWARE_CURSORS = "1";     # Fix for disappearing cursors on new Intel
-	AQ_DRM_DEVICES = "/dev/dri/card0"; # force GPU selection
-	WLR_DRM_NO_ATOMIC = "1";           # disable atomic handshake which is buggy on current xe+ lg hdmi
+  NIXOS_OZONE_WL = "1";              # Force Electron apps to use Wayland
+  LIBVA_DRIVER_NAME = "iHD";         # Hardware acceleration
+  WLR_NO_HARDWARE_CURSORS = "1";     # Fix for disappearing cursors on new Intel
+  AQ_DRM_DEVICES = "/dev/dri/card0"; # force GPU selection
+  WLR_DRM_NO_ATOMIC = "1";           # disable atomic handshake which is buggy on current xe+ lg hdmi
   };
 
   # Install firefox.
@@ -233,17 +268,26 @@ in
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-  	vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
   #  wget
-  	unzip
+    unzip
     zip
     file-roller
-	  vivaldi
+    vivaldi
     nixd
-    nixfmt-rfc-style
+    nixfmt
     peazip
     capacities
+    
+    # (NEW) Wayland/Hyprland Essentials!
+    wl-clipboard # You absolutely need this to copy/paste properly
+    grim         # Screenshot tool
+    slurp        # Screen region selector (pairs with grim)
+    nvd          # Diff tool for Nix (pairs beautifully with `nh`)
   ];
+
+  programs.appimage.enable = true;
+  programs.appimage.binfmt = true;
   
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -270,13 +314,15 @@ in
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html). 
- # environment.interactiveShellInit = ''
-#	if [ "(tty)"="/dev/tty1" ]; then
-#	  sleep 1
-#	  exec Hyprland
-#	fi
-#	'';
+  
+  # environment.interactiveShellInit = ''
+  # if [ "(tty)"="/dev/tty1" ]; then
+  #   sleep 1
+  #   exec Hyprland
+  # fi
+  # '';
+  
   nixpkgs.hostPlatform = "x86_64-linux";
 
-  system.stateVersion = "25.11"; # Did you read the comment?
+  system.stateVersion = "26.05"; # Did you read the comment?
 }
